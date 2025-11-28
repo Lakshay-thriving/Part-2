@@ -115,14 +115,15 @@ void            swtch(struct context*, struct context*);
 // spinlock.c
 void            acquire(struct spinlock*);
 int             holding(struct spinlock*);
-void            initlock(struct spinlock*, char*);
+void            initlock(struct spinlock*, char*); // FIXED: was initrwlock, changed to initlock
 void            release(struct spinlock*);
 void            push_off(void);
 void            pop_off(void);
 int             atomic_read4(int *addr);
+
 #ifdef LAB_LOCK
 void            freelock(struct spinlock*);
-void            initrwlock(struct rwspinlock*);
+void            initrwlock(struct rwspinlock*, char*); // FIXED: Added char* arg
 void            read_acquire(struct rwspinlock*);
 void            read_release(struct rwspinlock*);
 void            write_acquire(struct rwspinlock*);
@@ -157,7 +158,7 @@ void            syscall();
 extern uint     ticks;
 void            trapinit(void);
 void            trapinithart(void);
-extern struct spinlock tickslock;
+// extern struct spinlock tickslock;
 void            prepare_return(void);
 
 // uart.c

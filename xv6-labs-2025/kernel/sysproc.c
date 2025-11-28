@@ -9,7 +9,8 @@
 #include "riscv.h"
 #endif
 #include "vm.h"
-
+extern struct rwspinlock tickslock;
+extern uint ticks;
 uint64
 sys_exit(void)
 {
@@ -75,16 +76,23 @@ sys_pause(void)
   argint(0, &n);
   if(n < 0)
     n = 0;
-  acquire(&tickslock);
+  read_acquire(&tickslock);
   ticks0 = ticks;
-  while(ticks - ticks0 < n){
+  read_release(&tickslock);
+  while(1){
+    read_acquire(&tickslock);
+    uint curr_ticks = ticks; 
+    read_release(&tickslock);
+    if(curr_ticks - ticks0 >= n){
+      break;
+    }
     if(killed(myproc())){
-      release(&tickslock);
       return -1;
     }
-    sleep(&ticks, &tickslock);
+    acquire(&tickslock.lk);
+    sleep(&ticks, &tickslock.lk); 
+    release(&tickslock.lk);
   }
-  release(&tickslock);
   return 0;
 }
 
@@ -135,9 +143,9 @@ sys_uptime(void)
 {
   uint xticks;
 
-  acquire(&tickslock);
+  read_acquire(&tickslock);
   xticks = ticks;
-  release(&tickslock);
+  read_release(&tickslock);
   return xticks;
 }
 

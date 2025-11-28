@@ -14,7 +14,10 @@ struct spinlock {
 #ifdef LAB_LOCK
 // Reader-writer lock.
 struct rwspinlock {
-  // Replace this with your implementation.
-  struct spinlock l;
+  int waiting_writers;// Count of writers waiting (for priority)
+  int readers;        // Count of current readers
+  int writer;         // Boolean: is a writer holding the lock?
+  struct spinlock lk; // Internal lock to protect the struct fields
+  char *name;         // Name of the lock (for debugging)
 };
 #endif
