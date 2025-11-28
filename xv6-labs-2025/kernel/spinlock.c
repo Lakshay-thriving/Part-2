@@ -126,11 +126,26 @@ read_acquire_inner(struct rwspinlock *rwlk)
 {
   // Replace this with your implementation.
   acquire(&rwlk->l);
+  // Wait while there is an active writer OR any writer has indicated waiting.
+  // Writer priority: once a writer is waiting, new readers must wait.
+  while (rwlk->writers != 0 || rwlk->writer_waiting != 0) {
+    release(&rwlk->l);
+    // busy-wait: re-acquire and re-check
+    acquire(&rwlk->l);
+  }
+
+  // Safe to become an active reader
+  rwlk->readers++;
+  release(&rwlk->l);
 }
 
 static void
 read_release_inner(struct rwspinlock *rwlk)
 {
+  acquire(&rwlk->l);
+  if (rwlk->readers == 0)
+    panic("read_release_inner: no reader to release");
+  rwlk->readers--;
   // Replace this with your implementation.
   release(&rwlk->l);
 }
@@ -140,13 +155,32 @@ write_acquire_inner(struct rwspinlock *rwlk)
 {
   // Replace this with your implementation.
   acquire(&rwlk->l);
+  // Indicate a writer is waiting so new readers will not start.
+  rwlk->writer_waiting++;
+
+  // Wait until no active readers or writers
+  while (rwlk->readers != 0 || rwlk->writers != 0) {
+    release(&rwlk->l);
+    // busy-wait: re-acquire and re-check
+    acquire(&rwlk->l);
+  }
+
+  // We'll become the active writer
+  rwlk->writer_waiting--;
+  rwlk->writers = 1;
+  release(&rwlk->l);
 }
 
 static void
 write_release_inner(struct rwspinlock *rwlk)
 {
   // Replace this with your implementation.
+  acquire(&rwlk->l);
+  if (rwlk->writers == 0)
+    panic("write_release_inner: no writer to release");
+  rwlk->writers = 0;
   release(&rwlk->l);
+
 }
 
 void
@@ -182,6 +216,9 @@ initrwlock(struct rwspinlock *rwlk)
 {
   // Replace this with your implementation.
   initlock(&rwlk->l, "rwlk");
+   rwlk->readers = 0;
+  rwlk->writers = 0;
+  rwlk->writer_waiting = 0;
 }
 
 // Test rwspinlock implementation.
